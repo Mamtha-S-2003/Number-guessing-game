@@ -1,0 +1,726 @@
+bash
+------------
+#!/bin/bash
+
+# Variable to query database
+PSQL="psql --username=freecodecamp --dbname=number_guess -t --no-align -c"
+
+# Prompt user for username
+echo "Enter your username:"
+read USERNAME
+
+# Check if the user exists in the database
+USER_INFO=$($PSQL "SELECT user_id, username FROM users WHERE username='$USERNAME'")
+USER_ID=$(echo $USER_INFO | cut -d '|' -f1)
+
+# If the user doesn't exist, insert the user into the database
+if [[ -z $USER_INFO ]]; then
+  INSERT_USER=$($PSQL "INSERT INTO users(username) VALUES('$USERNAME')")
+  echo "Welcome, $USERNAME! It looks like this is your first time here."
+else
+  # Fetch games played and best game
+  GAMES_PLAYED=$($PSQL "SELECT COUNT(*) FROM games WHERE user_id = $USER_ID")
+  BEST_GAME=$($PSQL "SELECT MIN(number_guess) FROM games WHERE user_id = $USER_ID")
+  echo "Welcome back, $USERNAME! You have played $GAMES_PLAYED games, and your best game took $BEST_GAME guesses."
+fi
+
+# Generate random number between 1 and 1000
+RANDOM_NUM=$((1 + $RANDOM % 1000))
+GUESS_COUNT=0
+
+echo "Guess the secret number between 1 and 1000:"
+
+# Guessing loop
+while read GUESS; do
+  # Check if the input is a valid integer
+  if [[ ! $GUESS =~ ^[0-9]+$ ]]; then
+    echo "That is not an integer, guess again:"
+  else
+    # Increment guess count
+    GUESS_COUNT=$((GUESS_COUNT + 1))
+
+    # Check if the guess is correct
+    if [[ $GUESS -eq $RANDOM_NUM ]]; then
+      echo "You guessed it in $GUESS_COUNT tries. The secret number was $RANDOM_NUM. Nice job!"
+      break
+    elif [[ $GUESS -gt $RANDOM_NUM ]]; then
+      echo "It's lower than that, guess again:"
+    else
+      echo "It's higher than that, guess again:"
+    fi
+  fi
+done
+
+# Insert the game result into the database
+USER_ID=$($PSQL "SELECT user_id FROM users WHERE username = '$USERNAME'")
+INSERT_GAME=$($PSQL "INSERT INTO games(number_guess, user_id) VALUES($GUESS_COUNT, $USER_ID)")
+
+-------------
+sql
+-------------
+camper: /project$ psql --username=freecodecamp --dbname=postgres
+psql (12.17 (Ubuntu 12.17-1.pgdg22.04+1))
+SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits: 256, compression: off)
+Type "help" for help.
+
+postgres=> \l
+                              List of databases
+   Name    |  Owner   | Encoding | Collate |  Ctype  |   Access privileges   
+-----------+----------+----------+---------+---------+-----------------------
+ postgres  | postgres | UTF8     | C.UTF-8 | C.UTF-8 | 
+ template0 | postgres | UTF8     | C.UTF-8 | C.UTF-8 | =c/postgres          +
+           |          |          |         |         | postgres=CTc/postgres
+ template1 | postgres | UTF8     | C.UTF-8 | C.UTF-8 | =c/postgres          +
+           |          |          |         |         | postgres=CTc/postgres
+(3 rows)
+
+postgres=> CREATE DATABASE number_guess;
+CREATE DATABASE
+postgres=> \c number_guess
+SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits: 256, compression: off)
+You are now connected to database "number_guess" as user "freecodecamp".
+number_guess=> \d
+Did not find any relations.
+number_guess=> CREATE TABLE users(user_id SERIAL PRIMARY KE
+CREATE TABLE
+number_guess=> \d users
+number_guess=>  ALTER TABLE users ADD COLUMN username VARCHAALTER TABLEULL UNIQUE;
+ERROR:  syntax error at or near "TABLEULL"
+LINE 1: ALTER TABLE users ADD COLUMN username VARCHAALTER TABLEULL U...
+                                                          ^
+number_guess=> ALTER TABLE users ADD COLUMN username VARCHAR(20) NOT NULL UNIIQUE;
+ERROR:  syntax error at or near "UNIIQUE"
+LINE 1: ...ABLE users ADD COLUMN username VARCHAR(20) NOT NULL UNIIQUE;
+                                                               ^
+number_guess=> ALTER TABLE users ADD COLUMN username VARCHAR(20) NOT NULL UNIQUE;
+ALTER TABLE
+number_guess=> \d users
+number_guess=> CREATE TABLE games (game_id SERIAL PRIMARY KEY);
+CREATE TABLE
+number_guess=> \d games
+number_guess=> ALTER TABLE games ADD COLUMN number_guess INT NOT NULL;
+ALTER TABLE
+number_guess=> ALTER TABLE games ADD COLUMN user_id INT REFERENCES users(user_id);
+ALTER TABLE
+number_guess=> \d games
+number_guess=>  select * from games;
+ game_id | number_guess | user_id 
+---------+--------------+---------
+       1 |            5 |       1
+(1 row)
+
+number_guess=> select * from users;
+ user_id | username 
+---------+----------
+       1 | muruga
+(1 row)
+
+number_guess=> 
+
+-------------
+terminal
+-------------
+camper: /project$ mkdir number_guessing_game
+camper: /project$ cd number_guessing_game
+camper: /number_guessing_game$ git init
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint: 
+hint:   git config --global init.defaultBranch <name>
+hint: 
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint: 
+hint:   git branch -m <name>
+Initialized empty Git repository in /workspace/project/number_guessing_game/.git/
+camper: /number_guessing_game$  git branch
+camper: /number_guessing_game$  touch number_guess.sh
+camper: /number_guessing_game$ chmod +x number_guess.sh
+camper: /number_guessing_game$ git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        number_guess.sh
+
+nothing added to commit but untracked files present (use "git add" to track)
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "Initial commit"
+[master (root-commit) 37c452a] Initial commit
+ 1 file changed, 1 insertion(+)
+ create mode 100755 number_guess.sh
+camper: /number_guessing_game$  git branch
+* master
+camper: /number_guessing_game$ git main
+git: 'main' is not a git command. See 'git --help'.
+
+The most similar command is
+        mailinfo
+camper: /number_guessing_game$  git checkout -b main
+Switched to a new branch 'main'
+camper: /number_guessing_game$ git branch
+* main
+  master
+camper: /number_guessing_game$ man test
+camper: /number_guessing_game$ ./number_guess.sh
+Enter your username:
+muruga
+Guess the secret number between 1 and 1000:
+300
+User guessed: 300, Random number is: 359
+It's higher than that, guess again: 340
+User guessed: 340, Random number is: 359
+It's higher than that, guess again: 350
+User guessed: 350, Random number is: 359
+It's higher than that, guess again: 355
+User guessed: 355, Random number is: 359
+It's higher than that, guess again: 360
+User guessed: 360, Random number is: 359
+It's lower than that, guess again: 359
+User guessed: 359, Random number is: 359
+Final guess count: 6
+You guessed it in 6 tries. The secret number was 359. Nice job!
+camper: /number_guessing_game$ ./number_guess.sh
+Enter your username:
+muruga
+Username query result: 
+Games played: 0, Best game: 
+Welcome, muruga! It looks like this is your first time here.
+Guess the secret number between 1 and 1000:
+600
+User guessed: 600, Random number is: 597
+It's lower than that, guess again: 599
+User guessed: 599, Random number is: 597
+It's lower than that, guess again: 598
+User guessed: 598, Random number is: 597
+It's lower than that, guess again: 590
+User guessed: 590, Random number is: 597
+It's higher than that, guess again: 597
+User guessed: 597, Random number is: 597
+Final guess count: 5
+You guessed it in 5 tries. The secret number was 597. Nice job!
+User ID: 1
+Insert game result: INSERT 0 1
+camper: /number_guessing_game$  git add .
+camper: /number_guessing_game$ git commit -m "feat: guessing game"
+[main d4294ca] feat: guessing game
+ 1 file changed, 62 insertions(+), 1 deletion(-)
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ chmod +x number_guess.sh
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "feat: added user greeting and game
+ logic"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ cat .gitignore
+cat: .gitignore: No such file or directory
+camper: /number_guessing_game$ git checkout main
+Already on 'main'
+camper: /number_guessing_game$ git log
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+camper: /number_guessing_game$ git status
+On branch main
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        tatus
+
+nothing added to commit but untracked files present (use "git add" to track)
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+[main c64dfd9] fix: guessing game
+ 1 file changed, 11 insertions(+)
+ create mode 100644 tatus
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+[main 46cbbf1] fix: guessing game
+ 1 file changed, 28 insertions(+), 36 deletions(-)
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+camper: /number_guessing_game$ cat .gitignore
+cat: .gitignore: No such file or directory
+camper: /number_guessing_game$ git checkout main
+Already on 'main'
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ cat .gitignore
+cat: .gitignore: No such file or directory
+camper: /number_guessing_game$ git checkout main
+Already on 'main'
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 02:38:10 2024 +0000
+
+    Initial commit
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+camper: /number_guessing_game$ git add number_guess.sh
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git branch
+* main
+  master
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git push origin main
+fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 02:38:10 2024 +0000
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 02:38:10 2024 +0000
+
+camper: /number_guessing_game$ git add tatus .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git branch
+* main
+  master
+camper: /number_guessing_game$ git checkout main
+Already on 'main'
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git add tatus ...
+fatal: pathspec '...' did not match any files
+camper: /number_guessing_game$ git add tatus
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ nano number_guess.sh
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git add number_guess.sh
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: add more logic to guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+:...skipping...
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+camper: /number_guessing_game$ nano number_guess.sh
+camper: /number_guessing_game$ ls -l number_guess.sh
+-rwxr-xr-x 1 gitpod gitpod 1871 Oct 22 04:01 number_guess.sh
+camper: /number_guessing_game$ chmod u+w number_guess.sh
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ nano number_guess.sh
+camper: /number_guessing_game$ ls -l number_guess.sh
+-rwxr-xr-x 1 gitpod gitpod 1871 Oct 22 04:43 number_guess.sh
+camper: /number_guessing_game$ chmod u+w number_guess.sh
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ git diff
+camper: /number_guessing_game$ cat .gitignore
+cat: .gitignore: No such file or directory
+camper: /number_guessing_game$ git checkout main
+Already on 'main'
+camper: /number_guessing_game$ git log
+commit 46cbbf1e9deb9ac4cb1328585d81407db92c95fc (HEAD -> main)
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 04:04:11 2024 +0000
+
+    fix: guessing game
+
+commit c64dfd91e0bd46447b65af25653bcd5b6672b490
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:50:21 2024 +0000
+
+    fix: guessing game
+
+commit d4294caebdf86b3eed2eb78f4c2ef16d6ea3f66e
+Author: Mamtha-S-2003 s <sundararajank640@gmail.com>
+Date:   Tue Oct 22 03:31:40 2024 +0000
+
+    feat: guessing game
+
+commit 37c452a37427ca755198ace43804e83090de6cb0 (master)
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ cd number_guessing_game
+bash: cd: number_guessing_game: No such file or directory
+camper: /number_guessing_game$ git init
+Reinitialized existing Git repository in /workspace/project/number_guessing_game/.git/
+camper: /number_guessing_game$ git branch
+* main
+  master
+camper: /number_guessing_game$ chmod +x tatus
+camper: /number_guessing_game$ git status
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   tatus
+
+no changes added to commit (use "git add" and/or "git commit -a")
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+[main 34c5483] fix: guessing game
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ mode change 100644 => 100755 tatus
+camper: /number_guessing_game$ git add .
+camper: /number_guessing_game$ git commit -m "fix: guessing game"
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ chmod +x tatus
+camper: /number_guessing_game$ git status
+On branch main
+nothing to commit, working tree clean
+camper: /number_guessing_game$ 
